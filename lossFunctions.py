@@ -18,6 +18,5 @@ class WeightedLoss (nn.Module):
                 loss.append(1 - flat_prediction[idx])
             else:
                 loss.append(0.1)
-
         
         return torch.mean(torch.tensor(loss)).to(prediction.get_device())

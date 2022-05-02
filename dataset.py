@@ -10,8 +10,9 @@ class TreeDataset(Dataset):
     It expects two directories: :var:`image_dir` and :var:`mask_dir`;
     The image-directory represents the actual images, the mask_dir a 
     a binary segmentation of the mask. The individual image and mask-
-    names should be the same.
+    names inside the directory must be the same.
     """
+
     def __init__(self, image_dir, mask_dir, transform=None):
         self.image_dir = image_dir
         self.mask_dir = mask_dir

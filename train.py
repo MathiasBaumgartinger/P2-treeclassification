@@ -13,39 +13,45 @@ from utils import (
     check_accuracy,
 )
 
-# Hyperparameters, adjust to needs etc.
+# Parameters, adjust to individual needs
 LEARNING_RATE = 1e-4
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 BATCH_SIZE = 16
 NUM_EPOCHS = 8
-NUM_WORKERS = 4
-# Actual size of the input images from the used dataset
-IMAGE_HEIGHT = 256  
-IMAGE_WIDTH = 256 
+NUM_WORKERS = 4 # https://stackoverflow.com/questions/53998282/how-does-the-number-of-workers-parameter-in-pytorch-dataloader-actually-work
+# Actual size of the input images from the used geodataset
+IMAGE_HEIGHT = 256
+IMAGE_WIDTH = 256
 PIN_MEMORY = True
+# If LOAD_MODEL -> actual trained model
 LOAD_MODEL = False
-CHECKPOINT = "path/to"
+CHECKPOINT = "./models/BCEWLL;LR1e-4;EPOCH0"
+# Should all exist!
 ACTUAL_DIR = "../../dataset/actual/"
 MASK_DIR = "../../dataset/mask_bin/"
+TRAIN_IMGS_DIR = "./saved_imgs"
 
 loss_fn = nn.BCEWithLogitsLoss()
 #loss_fn = WeightedLoss()
 
+MODEL_NAME = "BCEWLL;LR1e-4;"
+
 
 def train_fn(loader, model, optimizer, loss_fn, scaler):
+    # Progressbar
     loop = tqdm(loader)
 
     for batch_idx, (data, targets, _) in enumerate(loop):
         data = data.to(device=DEVICE)
         targets = targets.float().unsqueeze(1).to(device=DEVICE)
 
-        # forward
+        # Forward
         with torch.cuda.amp.autocast():
             predictions = model(data)
             loss = loss_fn(predictions, targets)
 
-        # backward
-        #loss.requires_grad = True # CUSTOM LOSS
+        # Backward
+        # loss.requires_grad = True # CUSTOM LOSS
         optimizer.zero_grad()
         scaler.scale(loss).backward()
         scaler.step(optimizer)
@@ -79,7 +85,7 @@ def main():
                 std=[1.0, 1.0, 1.0],
                 max_pixel_value=255.0,
             ),
-            ToTensorV2(),
+            ToTensorV2(), 
         ],
     )
 
@@ -97,7 +103,7 @@ def main():
 
     # RGB to binary
     model = UNET(in_c=3, out_c=1).to(DEVICE)
-    
+
     optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
 
     train_loader, val_loader, test_loader = get_loaders(
@@ -114,7 +120,6 @@ def main():
     if LOAD_MODEL:
         load_checkpoint(torch.load(CHECKPOINT), model)
 
-
     check_accuracy(val_loader, model, device=DEVICE)
     scaler = torch.cuda.amp.GradScaler()
 
@@ -126,13 +131,14 @@ def main():
             "state_dict": model.state_dict(),
             "optimizer": optimizer.state_dict(),
         }
-        save_checkpoint(checkpoint, epoch)
+        save_checkpoint(checkpoint, "%s%s%d" %
+                        (MODEL_NAME, "EPOCH", epoch + 1))
 
         check_accuracy(val_loader, model, device=DEVICE)
 
         # predict some images
         multiple_predict(
-            val_loader, model, dest_folder="saved_images/", device=DEVICE
+            val_loader, model, dest_folder=TRAIN_IMGS_DIR, device=DEVICE
         )
 
 
